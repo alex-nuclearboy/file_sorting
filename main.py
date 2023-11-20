@@ -34,40 +34,51 @@ def normalize(filename):
 
 
 # Function to process folders
-def process_folder(folder_path: str, known_extensions: Set[str], unknown_extensions: Set[str]):
+def process_folder(folder_path: str, base_path: str, known_extensions: Set[str], unknown_extensions: Set[str]):
+    if not os.path.exists(folder_path):
+        # Skip if the folder has been moved or deleted
+        return
+
     for item in os.listdir(folder_path):
         item_path = os.path.join(folder_path, item)
         if os.path.isdir(item_path):
-            if os.path.basename(item_path) not in ["archives", "video", "audio", "documents", "images"]:
-                process_folder(item_path, known_extensions, unknown_extensions)
+            # Recursive call for subdirectories
+            process_folder(item_path, base_path,
+                           known_extensions, unknown_extensions)
+
+            # Check again if the directory exists before trying to delete
+            if os.path.exists(item_path) and not os.listdir(item_path):
+                os.rmdir(item_path)
+
         else:
             _, ext = os.path.splitext(item)
             ext = ext.lower().lstrip('.')
             new_name = normalize(os.path.splitext(item)[0]) + '.' + ext
-            destination = os.path.join(folder_path, new_name)
-
-            # Categorizing based on extension
             category = next(
                 (cat for cat, exts in CATEGORIES.items() if ext in exts), None)
+
             if category:
                 known_extensions.add(ext)
-                target_dir = os.path.join(
-                    os.path.dirname(folder_path), category.lower())
+                target_dir = os.path.join(base_path, category)
                 os.makedirs(target_dir, exist_ok=True)
                 shutil.move(item_path, os.path.join(target_dir, new_name))
 
-                # Archives
+                # Handle archives
                 if category == "archives":
-                    shutil.unpack_archive(os.path.join(target_dir, new_name), os.path.join(
-                        target_dir, new_name.split('.')[0]))
+                    try:
+                        shutil.unpack_archive(os.path.join(target_dir, new_name), os.path.join(
+                            target_dir, new_name.split('.')[0]))
+                    except shutil.ReadError:
+                        print(
+                            f"Warning: Unable to unpack archive {os.path.join(target_dir, new_name)}")
 
             else:
                 unknown_extensions.add(ext)
-                shutil.move(item_path, destination)
-
-            # Cleaning up empty directories
-            if not os.listdir(folder_path):
-                os.rmdir(folder_path)
+                target_dir = os.path.join(base_path, "unknown")
+                os.makedirs(target_dir, exist_ok=True)
+                shutil.move(item_path, os.path.join(target_dir, new_name))
+                print(
+                    f"file {item_path} with an unknown extension was moved to the {target_dir}")
 
 
 # Main function
@@ -79,7 +90,8 @@ def main(folder_path: str):
 
     known_extensions = set()
     unknown_extensions = set()
-    process_folder(folder, known_extensions, unknown_extensions)
+    process_folder(folder_path, folder_path,
+                   known_extensions, unknown_extensions)
 
     # Printing reports
     print("Known extensions:", known_extensions)
