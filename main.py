@@ -35,8 +35,8 @@ def normalize(filename):
 
 # Function to process folders
 def process_folder(folder_path: str, base_path: str, known_extensions: Set[str], unknown_extensions: Set[str]):
+    # Skip if the folder has been moved or deleted
     if not os.path.exists(folder_path):
-        # Skip if the folder has been moved or deleted
         return
 
     for item in os.listdir(folder_path):
