@@ -34,7 +34,7 @@ def normalize(filename):
 
 
 # Function to process folders
-def process_folder(folder_path: str, base_path: str, known_extensions: Set[str], unknown_extensions: Set[str]):
+def process_folder(folder_path: str, base_path: str, category_files: dict, known_extensions: Set[str], unknown_extensions: Set[str]):
     # Skip if the folder has been moved or deleted
     if not os.path.exists(folder_path):
         return
@@ -43,7 +43,7 @@ def process_folder(folder_path: str, base_path: str, known_extensions: Set[str],
         item_path = os.path.join(folder_path, item)
         if os.path.isdir(item_path):
             # Recursive call for subdirectories
-            process_folder(item_path, base_path,
+            process_folder(item_path, base_path, category_files,
                            known_extensions, unknown_extensions)
 
             # Check again if the directory exists before trying to delete
@@ -52,16 +52,20 @@ def process_folder(folder_path: str, base_path: str, known_extensions: Set[str],
 
         else:
             _, ext = os.path.splitext(item)
-            ext = ext.lower().lstrip('.')
-            new_name = normalize(os.path.splitext(item)[0]) + '.' + ext
+            # ext = ext.lower()
+            if ext:
+                ext = ext.lstrip('.')
+            new_name = normalize(os.path.splitext(
+                item)[0]) + ('.' + ext if ext else '')
             category = next(
-                (cat for cat, exts in CATEGORIES.items() if ext in exts), None)
+                (cat for cat, exts in CATEGORIES.items() if ext.lower() in exts), None)
 
             if category:
                 known_extensions.add(ext)
                 target_dir = os.path.join(base_path, category)
                 os.makedirs(target_dir, exist_ok=True)
                 shutil.move(item_path, os.path.join(target_dir, new_name))
+                category_files[category].append(new_name)
 
                 # Handle archives
                 if category == "archives":
@@ -77,8 +81,7 @@ def process_folder(folder_path: str, base_path: str, known_extensions: Set[str],
                 target_dir = os.path.join(base_path, "unknown")
                 os.makedirs(target_dir, exist_ok=True)
                 shutil.move(item_path, os.path.join(target_dir, new_name))
-                print(
-                    f"file {item_path} with an unknown extension was moved to the {target_dir}")
+                category_files["unknown"].append(new_name)
 
 
 # Main function
@@ -88,12 +91,21 @@ def main(folder_path: str):
         print("The provided path is not a valid directory.")
         sys.exit(1)
 
+    # Creating a dictionary of categories
+    category_files = {cat: [] for cat in CATEGORIES.keys()}
+    category_files["unknown"] = []
     known_extensions = set()
     unknown_extensions = set()
-    process_folder(folder_path, folder_path,
+
+    process_folder(folder_path, folder_path, category_files,
                    known_extensions, unknown_extensions)
 
     # Printing reports
+    for category, files in category_files.items():
+        print(f"Category '{category}': {len(files)} files")
+        for file in files:
+            print(f"    - {file}")
+
     print("Known extensions:", known_extensions)
     print("Unknown extensions:", unknown_extensions)
 
