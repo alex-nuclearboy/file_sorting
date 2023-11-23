@@ -13,8 +13,8 @@ A key feature of this script is its file renaming capability. The `normalize` fu
 
 ### Installation and Usage:
     # Clone the repository
-    git clone https://github.com/alex-nuclearboy/goit-python-homeworks.git
+    git clone https://github.com/alex-nuclearboy/goit-file-sorting.git
     # Navigate to the script directory
-    cd goit-python-homeworks/goit-python-hw-06/file-sorting
+    cd goit-file-sorting
     # Run the script on your desired directory
-    python3 sorter.py <path_to_target_directory>
+    python3 main.py <path_to_target_directory>
